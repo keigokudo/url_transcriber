@@ -46,6 +46,7 @@ def _download_options(destination: Path) -> dict[str, Any]:
         "noplaylist": True,
         "quiet": True,
         "no_warnings": True,
+        "noprogress": True,
         "outtmpl": str(destination / "audio.%(ext)s"),
         "paths": {
             "home": str(destination),
