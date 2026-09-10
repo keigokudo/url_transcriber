@@ -2,7 +2,7 @@
 
 import math
 
-from url_transcriber.models import TranscriptResult, VideoMetadata
+from url_transcriber.models import TranscriptResult, TranscriptSource, VideoMetadata
 
 
 _WINDOWS_RESERVED_NAMES = {
@@ -46,6 +46,11 @@ def format_duration(duration_seconds: int | float | None) -> str:
     return format_timestamp(duration_seconds)
 
 
+def format_transcript_source(source: TranscriptSource) -> str:
+    """Return the stable user-facing label for a transcript source."""
+    return _SOURCE_LABELS[source]
+
+
 def sanitize_filename(title: str) -> str:
     """Return a deterministic, Windows-safe filename stem for ``title``.
 
@@ -77,7 +82,7 @@ def format_markdown(metadata: VideoMetadata, transcript: TranscriptResult) -> st
     webpage_url = metadata.webpage_url.strip() or "Unknown"
     channel = metadata.uploader.strip() if metadata.uploader else "Unknown"
     language = transcript.language.strip() if transcript.language else "Unknown"
-    source_label = _SOURCE_LABELS[transcript.source]
+    source_label = format_transcript_source(transcript.source)
 
     sections = [
         f"# {title}",
