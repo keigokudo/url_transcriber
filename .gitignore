@@ -1,0 +1,12 @@
+# Virtual environments
+.venv/
+.venv-win/
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Generated transcripts (retain the directory marker)
+outputs/*
+!outputs/.gitkeep

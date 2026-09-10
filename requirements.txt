@@ -1,0 +1,3 @@
+pytest
+yt-dlp
+faster-whisper
