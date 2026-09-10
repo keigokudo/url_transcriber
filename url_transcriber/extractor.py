@@ -46,6 +46,7 @@ def extract_metadata(url: str) -> VideoMetadata:
         uploader=_nonempty_string(info.get("channel"))
         or _nonempty_string(info.get("uploader")),
         duration_seconds=_normalize_duration(info.get("duration")),
+        original_language=_nonempty_string(info.get("language")),
         manual_subtitles=_normalize_subtitle_tracks(info.get("subtitles")),
         automatic_captions=_normalize_subtitle_tracks(
             info.get("automatic_captions")

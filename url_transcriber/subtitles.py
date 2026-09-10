@@ -30,7 +30,7 @@ class SubtitleSelection:
     track: SubtitleTrack
 
 
-_LANGUAGE_PRIORITY = ("en", "ja")
+_LEGACY_LANGUAGE_PRIORITY = ("en", "ja")
 _SUPPORTED_EXTENSION = "vtt"
 _TIMING_LINE = re.compile(
     r"^\s*(?P<start>(?:\d{2,}:)?\d{2}:\d{2}(?:[.,]\d{1,3})?)"
@@ -42,15 +42,23 @@ _VTT_TAG = re.compile(r"<[^>]*>")
 
 
 def select_subtitle(metadata: VideoMetadata) -> SubtitleSelection | None:
-    """Select one retrievable VTT using source and language priority."""
+    """Select one retrievable original-language VTT, if available."""
     sources = (
         ("manual subtitles", metadata.manual_subtitles),
         ("automatic captions", metadata.automatic_captions),
     )
+    original_family = _language_family(metadata.original_language)
+    language_families = (
+        (original_family,) if original_family else _LEGACY_LANGUAGE_PRIORITY
+    )
 
     for source, tracks_by_language in sources:
-        for language_root in _LANGUAGE_PRIORITY:
-            for language in _matching_languages(tracks_by_language, language_root):
+        for language_family in language_families:
+            for language in _matching_languages(
+                tracks_by_language,
+                language_family,
+                preferred=metadata.original_language,
+            ):
                 for track in tracks_by_language[language]:
                     if (
                         track.extension.casefold() == _SUPPORTED_EXTENSION
@@ -181,19 +189,52 @@ def process_subtitles(metadata: VideoMetadata) -> TranscriptResult | None:
 
 def _matching_languages(
     tracks_by_language: dict[str, tuple[SubtitleTrack, ...]],
-    root: str,
+    family: str,
+    *,
+    preferred: str | None = None,
 ) -> list[str]:
-    exact = [language for language in tracks_by_language if language.casefold() == root]
+    normalized_preferred = _normalize_language_identifier(preferred)
+    exact_preferred = [
+        language
+        for language in tracks_by_language
+        if _normalize_language_identifier(language) == normalized_preferred
+    ]
+    exact_family = [
+        language
+        for language in tracks_by_language
+        if _normalize_language_identifier(language) == family
+        and language not in exact_preferred
+    ]
     variants = sorted(
         (
             language
             for language in tracks_by_language
-            if language.casefold().split("-", 1)[0] == root
-            and language.casefold() != root
+            if _language_family(language) == family
+            and language not in exact_preferred
+            and language not in exact_family
         ),
         key=str.casefold,
     )
-    return exact + variants
+    return exact_preferred + exact_family + variants
+
+
+def _normalize_language_identifier(language: str | None) -> str | None:
+    if not isinstance(language, str):
+        return None
+    normalized = language.strip().casefold().replace("_", "-")
+    return normalized or None
+
+
+def _language_family(language: str | None) -> str | None:
+    normalized = _normalize_language_identifier(language)
+    if normalized is None:
+        return None
+    family = normalized.split("-", 1)[0]
+    if not re.fullmatch(r"[a-z]{2,3}", family):
+        return None
+    if family in {"und", "zxx", "mul", "mis"}:
+        return None
+    return family
 
 
 def _parse_vtt_timestamp(value: str) -> float:

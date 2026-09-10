@@ -12,6 +12,7 @@ from url_transcriber.models import SubtitleTrack, TranscriptSegment, VideoMetada
 
 def _metadata(
     *,
+    original_language: str | None = None,
     manual: dict[str, tuple[SubtitleTrack, ...]] | None = None,
     automatic: dict[str, tuple[SubtitleTrack, ...]] | None = None,
 ) -> VideoMetadata:
@@ -20,6 +21,7 @@ def _metadata(
         webpage_url="https://example.com/video",
         uploader="Channel",
         duration_seconds=60,
+        original_language=original_language,
         manual_subtitles=manual or {},
         automatic_captions=automatic or {},
     )
@@ -45,6 +47,92 @@ def test_selection_prefers_manual_english_over_automatic_english() -> None:
     assert selection is not None
     assert selection.source == "manual subtitles"
     assert selection.language == "en"
+
+
+def test_japanese_video_selects_japanese_instead_of_english_auto_captions() -> None:
+    metadata = _metadata(
+        original_language="ja",
+        automatic={"en": (_track(),), "ja": (_track(),)},
+    )
+
+    selection = subtitles.select_subtitle(metadata)
+
+    assert selection is not None
+    assert selection.source == "automatic captions"
+    assert selection.language == "ja"
+
+
+def test_english_video_selects_english_instead_of_japanese_captions() -> None:
+    metadata = _metadata(
+        original_language="en",
+        manual={"ja": (_track(),), "en": (_track(),)},
+    )
+
+    selection = subtitles.select_subtitle(metadata)
+
+    assert selection is not None
+    assert selection.language == "en"
+
+
+def test_non_original_subtitle_is_not_usable() -> None:
+    metadata = _metadata(
+        original_language="ja",
+        automatic={"en": (_track(),)},
+    )
+
+    assert subtitles.select_subtitle(metadata) is None
+    assert subtitles.process_subtitles(metadata) is None
+
+
+@pytest.mark.parametrize(
+    ("original_language", "subtitle_language"),
+    [
+        ("ja", "ja-JP"),
+        ("ja_jp", "ja"),
+        ("ja-JP", "ja_jp"),
+        ("en-US", "en-GB"),
+    ],
+)
+def test_original_language_matches_regional_language_family(
+    original_language: str,
+    subtitle_language: str,
+) -> None:
+    selection = subtitles.select_subtitle(
+        _metadata(
+            original_language=original_language,
+            manual={subtitle_language: (_track(),)},
+        )
+    )
+
+    assert selection is not None
+    assert selection.language == subtitle_language
+
+
+def test_original_language_manual_subtitle_wins_over_automatic_caption() -> None:
+    metadata = _metadata(
+        original_language="ja-JP",
+        manual={"ja": (_track(),)},
+        automatic={"ja-JP": (_track(),)},
+    )
+
+    selection = subtitles.select_subtitle(metadata)
+
+    assert selection is not None
+    assert selection.source == "manual subtitles"
+    assert selection.language == "ja"
+
+
+def test_unknown_original_language_preserves_legacy_selection_policy() -> None:
+    metadata = _metadata(
+        manual={"ja": (_track(),), "en-GB": (_track(),)},
+        automatic={"en": (_track(),)},
+    )
+
+    selection = subtitles.select_subtitle(metadata)
+
+    assert selection is not None
+    assert selection.source == "manual subtitles"
+    assert selection.language == "en-GB"
 
 
 def test_selection_prefers_manual_japanese_over_automatic_english() -> None:

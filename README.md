@@ -154,14 +154,19 @@ suffixes such as `example.md`, `example-2.md`, and `example-3.md`.
 
 ## Subtitle behavior
 
-Subtitle selection uses this fixed v0.1 priority:
+URL Transcriber preserves the original spoken language by default. It does not
+use translated subtitles as a substitute for original-language captions. When
+yt-dlp reports the video's language, subtitle selection uses this priority:
 
-1. English-family manual VTT subtitles
-2. Japanese-family manual VTT subtitles
-3. English-family automatic VTT captions
-4. Japanese-family automatic VTT captions
+1. Original-language manual VTT subtitles
+2. Original-language automatic VTT captions
+3. Local Whisper transcription of the original audio
 
-Identifiers such as `en`, `en-US`, `en-GB`, `ja`, and `ja-JP` are recognized.
+Identifiers such as `en`, `en-US`, `en-GB`, `ja`, `ja-JP`, and underscore
+variants are matched by language family. If yt-dlp does not report a usable
+video language, the existing English/Japanese subtitle fallback order is
+retained rather than guessing a new original language.
+
 Only VTT is parsed; TTML, JSON3, and SRV formats are not v0.1 inputs. The one
 selected subtitle is fetched and parsed in memory rather than saved as a `.vtt`
 file. Cleaning removes presentation markup, normalizes whitespace, and reduces

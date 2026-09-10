@@ -14,11 +14,13 @@ from url_transcriber.errors import (
     TranscriptionError,
 )
 from url_transcriber.models import (
+    SubtitleTrack,
     TranscriptResult,
     TranscriptSegment,
     TranscriptSource,
     VideoMetadata,
 )
+from url_transcriber.subtitles import process_subtitles
 
 
 def _metadata() -> VideoMetadata:
@@ -131,6 +133,39 @@ def test_no_subtitle_runs_whisper_with_live_temporary_audio(
     )
     assert not state["audio_path"].exists()
     assert not state["temp_dir"].exists()
+
+
+def test_non_original_subtitle_falls_back_to_whisper(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    mocks = _mock_boundaries(monkeypatch)
+    metadata = _metadata()
+    metadata.original_language = "ja"
+    metadata.automatic_captions = {
+        "en": (
+            SubtitleTrack(
+                extension="vtt",
+                content="WEBVTT\n\n00:00.000 --> 00:01.000\nTranslated text.",
+            ),
+        )
+    }
+    mocks["extract"].return_value = metadata
+    mocks["subtitles"].side_effect = process_subtitles
+
+    def download(_url: str, temp_dir: Path) -> Path:
+        audio_path = temp_dir / "original-audio.webm"
+        audio_path.touch()
+        return audio_path
+
+    mocks["download"].side_effect = download
+
+    result = pipeline.run_url_pipeline("https://example.com/video", tmp_path)
+
+    mocks["subtitles"].assert_called_once_with(metadata)
+    mocks["download"].assert_called_once()
+    mocks["transcribe"].assert_called_once()
+    assert result.transcript.source == "local Whisper"
 
 
 def test_subtitle_error_falls_back_to_whisper(

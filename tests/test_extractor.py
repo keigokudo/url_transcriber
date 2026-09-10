@@ -42,6 +42,7 @@ def test_extract_metadata_normalizes_basic_fields_and_uses_no_download(
             "channel": "Stable Channel",
             "uploader": "Uploader Fallback",
             "duration": 125,
+            "language": "ja-JP",
         },
     )
 
@@ -51,6 +52,7 @@ def test_extract_metadata_normalizes_basic_fields_and_uses_no_download(
     assert metadata.webpage_url == "https://example.com/watch?v=123"
     assert metadata.uploader == "Stable Channel"
     assert metadata.duration_seconds == 125.0
+    assert metadata.original_language == "ja-JP"
     assert metadata.manual_subtitles == {}
     assert metadata.automatic_captions == {}
 
@@ -137,6 +139,7 @@ def test_extract_metadata_uses_optional_field_fallbacks(
     assert metadata.webpage_url == supplied_url
     assert metadata.uploader == "Uploader Name"
     assert metadata.duration_seconds is None
+    assert metadata.original_language is None
     assert metadata.manual_subtitles == {}
     assert metadata.automatic_captions == {}
 

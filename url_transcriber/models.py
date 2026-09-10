@@ -36,6 +36,7 @@ class VideoMetadata:
     duration_seconds: float | None
     manual_subtitles: SubtitleTracks = field(default_factory=dict)
     automatic_captions: SubtitleTracks = field(default_factory=dict)
+    original_language: str | None = None
 
 
 @dataclass
