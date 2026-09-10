@@ -4,7 +4,17 @@ from dataclasses import dataclass, field
 from typing import Literal
 
 
-SubtitleTracks = dict[str, tuple[str, ...]]
+@dataclass
+class SubtitleTrack:
+    """One available subtitle resource in a specific timed-text format."""
+
+    extension: str
+    url: str | None = None
+    content: str | None = None
+    http_headers: dict[str, str] = field(default_factory=dict)
+
+
+SubtitleTracks = dict[str, tuple[SubtitleTrack, ...]]
 TranscriptSource = Literal[
     "manual subtitles",
     "automatic captions",
@@ -16,8 +26,8 @@ TranscriptSource = Literal[
 class VideoMetadata:
     """Normalized video information needed by the future pipeline.
 
-    Subtitle mappings use language codes as keys and the available format names
-    for that language as values.
+    Subtitle mappings use language codes as keys and available subtitle
+    resources for that language as values.
     """
 
     title: str

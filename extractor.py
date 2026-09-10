@@ -8,7 +8,7 @@ from yt_dlp import YoutubeDL
 from yt_dlp.utils import DownloadError
 
 from url_transcriber.errors import ExtractionError
-from url_transcriber.models import SubtitleTracks, VideoMetadata
+from url_transcriber.models import SubtitleTrack, SubtitleTracks, VideoMetadata
 
 
 _YDL_OPTIONS: dict[str, Any] = {
@@ -78,14 +78,35 @@ def _normalize_subtitle_tracks(value: object) -> SubtitleTracks:
         if not isinstance(language, str) or not isinstance(entries, list):
             continue
 
-        formats: list[str] = []
+        formats: list[SubtitleTrack] = []
         for entry in entries:
             if not isinstance(entry, Mapping):
                 continue
             extension = _nonempty_string(entry.get("ext"))
-            if extension is not None and extension not in formats:
-                formats.append(extension)
+            if extension is None:
+                continue
+
+            track = SubtitleTrack(
+                extension=extension,
+                url=_nonempty_string(entry.get("url")),
+                content=entry.get("data")
+                if isinstance(entry.get("data"), str)
+                else None,
+                http_headers=_normalize_http_headers(entry.get("http_headers")),
+            )
+            if track not in formats:
+                formats.append(track)
 
         tracks[language] = tuple(formats)
 
     return tracks
+
+
+def _normalize_http_headers(value: object) -> dict[str, str]:
+    if not isinstance(value, Mapping):
+        return {}
+    return {
+        key: header_value
+        for key, header_value in value.items()
+        if isinstance(key, str) and isinstance(header_value, str)
+    }
